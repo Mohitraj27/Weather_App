@@ -1,20 +1,15 @@
-// const { response } = require("express");
-
 var weatherApi = "/weather";
 const weatherForm = document.querySelector('form');
 const search = document.querySelector('input');
 const weatherIcon = document.querySelector('.weatherIcon i');
 const weatherCondition = document.querySelector('.weatherCondition');
 const tempElement = document.querySelector('.temperature span');
-
-
 const locationElement = document.querySelector(".place");
 const dateElement = document.querySelector(".date");
 const currentDate = new Date();
 const options = { month: "long" , day:"numeric", year: "numeric" };
 const fullDate = currentDate.toLocaleDateString("en-US", options);
 dateElement.textContent = fullDate;
-
 if("geolocation" in navigator){
     locationElement.textContent = "Loading...";
     navigator.geolocation.getCurrentPosition(
@@ -25,22 +20,26 @@ if("geolocation" in navigator){
             fetch(apiUrl)
             .then((response)=>response.json())
             .then((data)=>{
-                if(data && data.address && data.address.city){
-                    const city = data.address.city;
-                    showData(city);
+                    if(data && data.address){
+                    const city = data.address.city || data.address.town
+                     || data.address.village || data.address.hamlet || data.address.country 
+                     || data.address.state                  
+                showData(city);
                 }else{
                   locationElement.textContent = "Current Location Not Found!"
                 }
             }).catch((error)=>{
-                console.log(error.message);
+                locationElement.textContent = "Error fetching location!";
+                throw new Error("Error fetching location: " + error.message);
             })
         },
         function (error){
-            console.log(error.message);
+            locationElement.textContent = "Geolocation error!";
+            throw new Error("Geolocation error: " + error.message);
         }
     );
 } else{
-    console.log("Geolocation is not available on this browser!");
+    throw new Error("Geolocation is not available on this browser!");
 }
 
 weatherForm.addEventListener("submit",(e)=>{
@@ -49,17 +48,14 @@ weatherForm.addEventListener("submit",(e)=>{
     weatherIcon.className = "";
     tempElement.textContent = "";
     weatherCondition.textContent = "";
-
     showData(search.value);
 });
 
 function showData(city){
     getWeatherData(city, (result)=>{
-        console.log(result.json);
-       if(result.cod == 200){
+        if(result.cod == 200){
         const weatherDescription = result.weather[0].description.toLowerCase();
         let iconClass = "";
-        
         // Map weather descriptions to Weather Icons classes
             const weatherIconMap = {
                 "clear sky": "wi wi-day-sunny",
@@ -98,31 +94,20 @@ function showData(city){
                 "heavy shower snow": "wi wi-snow"
             };
 
-            // Find the matching icon class or set a default
-            iconClass = weatherIconMap[weatherDescription] || "wi wi-day-cloudy";
-
-
+        // Find the matching icon class or set a default
+        iconClass = weatherIconMap[weatherDescription] || "wi wi-day-cloudy";
         weatherIcon.className = iconClass;
-        
-        
         locationElement.textContent = result?.name;
-        
-        // tempElement.textContent = (result?.main?.temp - 273.5).toFixed(2) + String.fromCharCode(176)+ "C";
         const tempKelvin = result?.main?.temp;
         const tempCelsius = tempKelvin - 273.15;
         const tempFahrenheit = (tempCelsius * 9/5) + 32;
         tempElement.innerHTML = `${tempCelsius.toFixed(2)}&deg;C / ${tempFahrenheit.toFixed(2)}&deg;F`;
-       
         weatherCondition.textContent = result?.weather[0]?.description?.toUpperCase();
-            
-
-    }else{
+    } else{
         locationElement.textContent = "City Not Found";
        }
     })
 }
-
-
 
 function getWeatherData(city, callback){
     const  locationApi = weatherApi + "?address=" + city;
